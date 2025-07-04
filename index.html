@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mint SVG Cube NFT</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -52,6 +51,8 @@
     <button id="mintBtn" disabled>Mint Free Cube</button>
   </div>
 
+  <!-- ✅ Load ethers.js BEFORE your script -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
     const CONTRACT_ADDRESS = "0xBcAE8598d445c229F31127eF9c68a1Da6a726b94";
 
@@ -126,7 +127,7 @@
         const tokenURI = await contract.tokenURI(tokenId);
         const metadata = JSON.parse(atob(tokenURI.split(",")[1]));
         nftPreview.innerHTML = metadata.image.startsWith("data:image") 
-          ? `<div><strong>Your Cube #${tokenId}</strong><br/><div>${atob(metadata.image.split(",")[1])}</div></div>`
+          ? `<div><strong>Your Cube #${tokenId}</strong><br/>${atob(metadata.image.split(",")[1])}</div>`
           : `<img src="${metadata.image}" width="200" alt="NFT Preview" />`;
       } catch (err) {
         console.error("Preview error:", err);
