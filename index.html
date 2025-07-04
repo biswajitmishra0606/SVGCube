@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mint SVG Cube NFT</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+    }
+    .mint-box {
+      background: #222;
+      border: 1px solid #444;
+      padding: 2rem;
+      border-radius: 10px;
+      display: inline-block;
+      margin-top: 2rem;
+    }
+    button {
+      background-color: steelblue;
+      color: white;
+      padding: 0.7rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    button:disabled {
+      background-color: gray;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧊 SVG Cube NFT Mint</h1>
+  <p>Mint your free animated on-chain cube NFT (1 per wallet)</p>
+
+  <div class="mint-box">
+    <p><strong>Total Minted:</strong> <span id="totalMinted">...</span> / 1111</p>
+    <p><strong>Status:</strong> <span id="status">Disconnected</span></p>
+    <button id="connectBtn">Connect Wallet</button><br/>
+    <button id="mintBtn" disabled>Mint Free Cube</button>
+  </div>
+
+  <script>
+    const CONTRACT_ADDRESS = "0xBcAE8598d445c229F31127eF9c68a1Da6a726b94";
+
+    const ABI = [ // Your full ABI here
+      {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+      {"inputs":[],"name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"totalMinted","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"MAX_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],"name":"tokenOfOwnerByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"index","type":"uint256"}],"name":"tokenByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"hasMinted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}
+    ];
+
+    let provider, signer, contract;
+
+    const connectBtn = document.getElementById("connectBtn");
+    const mintBtn = document.getElementById("mintBtn");
+    const status = document.getElementById("status");
+    const totalMinted = document.getElementById("totalMinted");
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("Please install MetaMask");
+        return;
+      }
+
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      const address = await signer.getAddress();
+
+      status.textContent = "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
+      contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+      mintBtn.disabled = false;
+      updateTotalMinted();
+    }
+
+    async function updateTotalMinted() {
+      try {
+        const count = await contract.totalMinted();
+        totalMinted.textContent = count.toString();
+      } catch (e) {
+        totalMinted.textContent = "Error";
+        console.error(e);
+      }
+    }
+
+    async function mint() {
+      try {
+        status.textContent = "Minting...";
+        const tx = await contract.mint();
+        await tx.wait();
+        status.textContent = "Minted successfully!";
+        updateTotalMinted();
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Mint failed: " + (err.reason || err.message);
+      }
+    }
+
+    connectBtn.onclick = connectWallet;
+    mintBtn.onclick = mint;
+  </script>
+</body>
+</html>
