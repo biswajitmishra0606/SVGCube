@@ -34,6 +34,9 @@
     button:disabled {
       background-color: gray;
     }
+    .nft-preview {
+      margin: 1rem 0;
+    }
   </style>
 </head>
 <body>
@@ -42,6 +45,7 @@
   <p>Mint your free animated on-chain cube NFT (1 per wallet)</p>
 
   <div class="mint-box">
+    <div class="nft-preview" id="nftPreview">[NFT Preview Loading...]</div>
     <p><strong>Total Minted:</strong> <span id="totalMinted">...</span> / 1111</p>
     <p><strong>Status:</strong> <span id="status">Disconnected</span></p>
     <button id="connectBtn">Connect Wallet</button><br/>
@@ -51,29 +55,21 @@
   <script>
     const CONTRACT_ADDRESS = "0xBcAE8598d445c229F31127eF9c68a1Da6a726b94";
 
-    const ABI = [ // Your full ABI here
-      {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+    const ABI = [
       {"inputs":[],"name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"},
       {"inputs":[],"name":"totalMinted","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"MAX_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
       {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],"name":"tokenOfOwnerByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"index","type":"uint256"}],"name":"tokenByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"hasMinted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"}
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ];
 
-    let provider, signer, contract;
+    let provider, signer, contract, userAddress;
 
     const connectBtn = document.getElementById("connectBtn");
     const mintBtn = document.getElementById("mintBtn");
     const status = document.getElementById("status");
     const totalMinted = document.getElementById("totalMinted");
+    const nftPreview = document.getElementById("nftPreview");
 
     async function connectWallet() {
       if (!window.ethereum) {
@@ -84,12 +80,14 @@
       provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = provider.getSigner();
-      const address = await signer.getAddress();
+      userAddress = await signer.getAddress();
 
-      status.textContent = "Connected: " + address.slice(0, 6) + "..." + address.slice(-4);
+      status.textContent = "Connected: " + userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
       contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
       mintBtn.disabled = false;
+
       updateTotalMinted();
+      showNFTPreview();
     }
 
     async function updateTotalMinted() {
@@ -109,9 +107,30 @@
         await tx.wait();
         status.textContent = "Minted successfully!";
         updateTotalMinted();
+        showNFTPreview();
       } catch (err) {
         console.error(err);
         status.textContent = "Mint failed: " + (err.reason || err.message);
+      }
+    }
+
+    async function showNFTPreview() {
+      try {
+        const balance = await contract.balanceOf(userAddress);
+        if (balance.eq(0)) {
+          nftPreview.innerHTML = "[No NFT owned yet]";
+          return;
+        }
+
+        const tokenId = await contract.tokenOfOwnerByIndex(userAddress, balance.sub(1));
+        const tokenURI = await contract.tokenURI(tokenId);
+        const metadata = JSON.parse(atob(tokenURI.split(",")[1]));
+        nftPreview.innerHTML = metadata.image.startsWith("data:image") 
+          ? `<div><strong>Your Cube #${tokenId}</strong><br/><div>${atob(metadata.image.split(",")[1])}</div></div>`
+          : `<img src="${metadata.image}" width="200" alt="NFT Preview" />`;
+      } catch (err) {
+        console.error("Preview error:", err);
+        nftPreview.innerHTML = "[Failed to load NFT preview]";
       }
     }
 
